@@ -34,13 +34,37 @@ module DawandaMoney
         self
       elsif currency == BASE_CURRENCY
         rate = @@conversion_rates[BASE_CURRENCY]
-        return "Error: no rates to convert #{currency} to #{cur}" if rate.nil?
+        raise "Error: no rates to convert #{currency} to #{cur}" if rate.nil?
         rate = rate[cur]
-        return "Error: no rates to convert #{currency} to #{cur}" if rate.nil?
+        raise "Error: no rates to convert #{currency} to #{cur}" if rate.nil?
 
-        Money.new(amount * rate, cur)
+        Money.new((amount * rate).round(2), cur)
       else
         convert_to_base.convert_to(cur)
+      end
+    end
+
+    [:+, :-, :*, :/].each do |operator|
+      define_method operator do |other|
+        if other.is_a?(Numeric)
+          Money.new(amount.public_send(operator, other), currency)
+        elsif other.is_a?(DawandaMoney::Money)
+          Money.new(amount.public_send(operator, other.convert_to(currency).amount), currency)
+        else
+          raise "Wrong type of second argument: #{other.class}. Should be Integer, Float or Money"
+        end
+      end
+    end
+
+    [:==, :>, :<, :>=, :<=].each do |operator|
+      define_method operator do |other|
+        if other.is_a?(Numeric)
+          amount.public_send(operator, other)
+        elsif other.is_a?(DawandaMoney::Money)
+          amount.public_send(operator, other.convert_to(currency).amount)
+        else
+          raise "Wrong type of second argument: #{other.class}. Should be Integer, Float or Money"
+        end
       end
     end
 
@@ -48,11 +72,11 @@ module DawandaMoney
 
     def convert_to_base
       rate = @@conversion_rates[BASE_CURRENCY]
-      return "Error: no rates to convert #{currency} to #{BASE_CURRENCY}" if rate.nil?
+      raise "Error: no rates to convert #{currency} to #{BASE_CURRENCY}" if rate.nil?
       rate = rate[currency]
-      return "Error: no rates to convert #{currency} to #{BASE_CURRENCY}" if rate.nil?
+      raise "Error: no rates to convert #{currency} to #{BASE_CURRENCY}" if rate.nil?
 
-      Money.new(amount / rate, BASE_CURRENCY)
+      Money.new((amount / rate).round(2), BASE_CURRENCY)
     end
   end
 end
