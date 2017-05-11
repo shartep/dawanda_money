@@ -12,15 +12,20 @@ module DawandaMoney
       base_currency = base_currency.to_s
       rates = rates.to_h
       rates = rates.map do |k, v|
-        return "Wrong rate: #{v}" if v.to_f.zero?
+        raise "Wrong rate: #{v}" if v.to_f.zero?
         [k.to_s, v.to_f]
       end.to_h
 
-      @@conversion_rates[base_currency] = rates
+      @@conversion_rates[base_currency] ||= {}
+      @@conversion_rates[base_currency].merge!(rates)
+      rates.each do |k, v|
+        @@conversion_rates[k] ||= {}
+        @@conversion_rates[k].merge!({base_currency => (1 / v)})
+      end
     end
 
     def initialize(amount, currency)
-      return "Wrong amount: #{amount}, it should be Integer or Float" unless amount.is_a? Numeric
+      raise "Wrong amount: #{amount}, it should be Integer or Float" unless amount.is_a? Numeric
       @amount = amount
       @currency = currency.to_s
     end
@@ -30,17 +35,17 @@ module DawandaMoney
     end
 
     def convert_to(cur)
-      if currency == cur
-        self
-      elsif currency == BASE_CURRENCY
-        rate = @@conversion_rates[BASE_CURRENCY]
-        raise "Error: no rates to convert #{currency} to #{cur}" if rate.nil?
-        rate = rate[cur]
-        raise "Error: no rates to convert #{currency} to #{cur}" if rate.nil?
+      return self if currency == cur
 
+      if @@conversion_rates[currency] && (rate = @@conversion_rates[currency][cur])
         Money.new((amount * rate).round(2), cur)
+      elsif @@conversion_rates[currency] &&
+            @@conversion_rates[currency][BASE_CURRENCY] &&
+            @@conversion_rates[BASE_CURRENCY] &&
+            @@conversion_rates[BASE_CURRENCY][cur]
+        convert_to(BASE_CURRENCY).convert_to(cur)
       else
-        convert_to_base.convert_to(cur)
+        raise "Error: no rates to convert #{currency} to #{cur}" if rate.nil?
       end
     end
 
@@ -66,17 +71,6 @@ module DawandaMoney
           raise "Wrong type of second argument: #{other.class}. Should be Integer, Float or Money"
         end
       end
-    end
-
-    private
-
-    def convert_to_base
-      rate = @@conversion_rates[BASE_CURRENCY]
-      raise "Error: no rates to convert #{currency} to #{BASE_CURRENCY}" if rate.nil?
-      rate = rate[currency]
-      raise "Error: no rates to convert #{currency} to #{BASE_CURRENCY}" if rate.nil?
-
-      Money.new((amount / rate).round(2), BASE_CURRENCY)
     end
   end
 end
