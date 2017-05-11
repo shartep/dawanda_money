@@ -21,6 +21,11 @@ module DawandaMoney
       rates.each do |k, v|
         @@conversion_rates[k] ||= {}
         @@conversion_rates[k].merge!({base_currency => (1 / v)})
+        if base_currency != BASE_CURRENCY &&
+           @@conversion_rates[base_currency] &&
+           @@conversion_rates[base_currency][BASE_CURRENCY]
+          @@conversion_rates[k].merge!({BASE_CURRENCY => (@@conversion_rates[base_currency][BASE_CURRENCY] / v) })
+        end
       end
     end
 
