@@ -24,7 +24,9 @@ module DawandaMoney
         if base_currency != BASE_CURRENCY &&
            @@conversion_rates[base_currency] &&
            @@conversion_rates[base_currency][BASE_CURRENCY]
+
           @@conversion_rates[k].merge!({BASE_CURRENCY => (@@conversion_rates[base_currency][BASE_CURRENCY] / v) })
+          @@conversion_rates[BASE_CURRENCY].merge!({k => (v / @@conversion_rates[base_currency][BASE_CURRENCY]) })
         end
       end
     end
@@ -66,7 +68,7 @@ module DawandaMoney
       end
     end
 
-    [:==, :>, :<, :>=, :<=].each do |operator|
+    [:==, :!=, :>, :<, :>=, :<=].each do |operator|
       define_method operator do |other|
         if other.is_a?(Numeric)
           amount.public_send(operator, other)
