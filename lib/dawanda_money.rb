@@ -2,11 +2,13 @@ require "dawanda_money/version"
 
 module DawandaMoney
   class Money
+    include Comparable
+
     BASE_CURRENCY = 'EUR'
 
     attr_reader :amount, :currency
 
-    @@conversion_rates = {}
+    @@conversion_rates ||= {}
 
     def self.conversion_rates(base_currency, rates)
       base_currency = base_currency.to_s
@@ -33,7 +35,7 @@ module DawandaMoney
 
     def initialize(amount, currency)
       raise "Wrong amount: #{amount}, it should be Integer or Float" unless amount.is_a? Numeric
-      @amount = amount
+      @amount = amount.to_f
       @currency = currency.to_s
     end
 
@@ -68,15 +70,13 @@ module DawandaMoney
       end
     end
 
-    [:==, :!=, :>, :<, :>=, :<=].each do |operator|
-      define_method operator do |other|
-        if other.is_a?(Numeric)
-          amount.public_send(operator, other)
-        elsif other.is_a?(DawandaMoney::Money)
-          amount.public_send(operator, other.convert_to(currency).amount)
-        else
-          raise "Wrong type of second argument: #{other.class}. Should be Integer, Float or Money"
-        end
+    def <=>(other)
+      if other.is_a?(Numeric)
+        amount <=> other
+      elsif other.is_a?(DawandaMoney::Money)
+        amount <=> other.convert_to(currency).amount
+      else
+        raise "Wrong type of second argument: #{other.class}. Should be Integer, Float or Money"
       end
     end
   end
